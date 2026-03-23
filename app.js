@@ -548,13 +548,12 @@ function bindEvents() {
 // Initialize
 let appState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
 async function initializeApp() {
-    var _a;
     // Ждём инициализации Firebase
     await new Promise(resolve => setTimeout(resolve, 500));
     // ВСЕГДА загружаем из Firestore если доступен
-    if ((_a = window.firebaseAuth) === null || _a === void 0 ? void 0 : _a.isSignedIn()) {
+    if (window.firebaseAuth) {
         const firebaseData = await window.firebaseAuth.loadFromFirestore();
-        if (firebaseData) {
+        if (firebaseData && firebaseData.totalPacks > 0) {
             appState = {
                 totalPacks: firebaseData.totalPacks || 0,
                 heirloom: firebaseData.heirloom || false,

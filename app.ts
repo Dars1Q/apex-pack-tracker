@@ -634,9 +634,9 @@ async function initializeApp() {
   await new Promise(resolve => setTimeout(resolve, 500));
   
   // ВСЕГДА загружаем из Firestore если доступен
-  if (window.firebaseAuth?.isSignedIn()) {
+  if (window.firebaseAuth) {
     const firebaseData = await window.firebaseAuth.loadFromFirestore();
-    if (firebaseData) {
+    if (firebaseData && firebaseData.totalPacks > 0) {
       appState = {
         totalPacks: firebaseData.totalPacks || 0,
         heirloom: firebaseData.heirloom || false,
