@@ -39,15 +39,13 @@ async function initFirebase() {
                 try {
                     const user = JSON.parse(decodeURIComponent(userStr));
                     console.log('Parsed user:', user);
-                    // ВСЕГДА используем username если есть - он одинаковый на всех устройствах!
+                    // Используем ТОЛЬКО username - он одинаковый на всех устройствах!
                     if (user.username) {
                         telegramUserId = 'tg_' + user.username.toLowerCase();
                         console.log('✓ Using username:', telegramUserId);
                     }
-                    // Fallback на user.id если нет username
-                    else if (user.id) {
-                        telegramUserId = 'tg_' + user.id;
-                        console.log('⚠ Using user ID:', telegramUserId);
+                    else {
+                        console.error('No username in Telegram user data!');
                     }
                 }
                 catch (e) {
