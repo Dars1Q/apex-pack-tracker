@@ -82,7 +82,7 @@ function setTelegramUser(id) {
  */
 function getUserId() {
     if (telegramUserId)
-        return `tg_${telegramUserId}`;
+        return telegramUserId;
     // Если нет Telegram ID, генерируем случайный
     return `anon_${Math.random().toString(36).substr(2, 9)}`;
 }
