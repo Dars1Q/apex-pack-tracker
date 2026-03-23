@@ -59,38 +59,53 @@ async function initFirebase(): Promise<boolean> {
     app = firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     
-    // Получаем Telegram user данные из initData
+    // Получаем Telegram user данные
     const tg = (window as any).Telegram?.WebApp;
+    console.log('Telegram WebApp:', !!tg);
+    console.log('Telegram initData:', tg?.initData ? 'present' : 'missing');
+    
     if (tg?.initData) {
+      console.log('InitData length:', tg.initData.length);
+      console.log('InitData preview:', tg.initData.substr(0, 50) + '...');
+      
       // Парсим initData для получения user данных
       const urlParams = new URLSearchParams(tg.initData);
       const userStr = urlParams.get('user');
+      console.log('User string:', userStr ? 'found' : 'missing');
+      
       if (userStr) {
         try {
           const user = JSON.parse(decodeURIComponent(userStr));
+          console.log('Parsed user:', user);
+          
           // Сначала пробуем username (он одинаковый везде)
           if (user.username) {
             telegramUserId = 'tg_' + user.username.toLowerCase();
-            console.log('Telegram username ID:', telegramUserId);
+            console.log('✓ Using username:', telegramUserId);
           }
           // Fallback на user.id если нет username
           else if (user.id) {
             telegramUserId = 'uid_' + user.id;
-            console.log('Telegram user ID:', telegramUserId);
+            console.log('✓ Using user ID:', telegramUserId);
           }
         } catch (e) {
-          console.warn('Failed to parse Telegram user:', e);
+          console.error('Failed to parse user:', e);
         }
       }
+    } else if (tg) {
+      console.warn('Telegram WebApp available but no initData');
+      console.log('WebApp version:', tg.version);
+      console.log('WebApp platform:', tg.platform);
     }
     
     // Fallback: если нет Telegram данных, используем случайный ID
     if (!telegramUserId) {
       telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
-      console.log('Anonymous ID:', telegramUserId);
+      console.log('⚠ Using anonymous ID:', telegramUserId);
     }
     
-    console.log('Firebase initialized');
+    console.log('✓ Firebase initialized');
+    console.log('✓ User ID:', telegramUserId);
     return true;
   } catch (error) {
     console.error('Firebase init error:', error);
