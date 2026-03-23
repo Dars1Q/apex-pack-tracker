@@ -375,25 +375,24 @@ function quickAddPacks(count) {
     showToast(`Added ${count} packs`, "success");
 }
 function markHeirloomObtained() {
-    const state = getState();
-    if (state.totalPacks <= 0) {
+    const currentPacks = toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value);
+    if (currentPacks <= 0) {
         showToast("No packs to save!", "error");
         return;
     }
-    const savedPacks = state.totalPacks;
     // Сохраняем текущий прогресс как завершённую реликвию
-    state.completedHeirlooms.push(savedPacks);
+    appState.completedHeirlooms.push(currentPacks);
     // Сбрасываем счётчик на 0
-    state.totalPacks = 0;
+    appState.totalPacks = 0;
     // Включаем Heirloom
-    state.heirloom = true;
+    appState.heirloom = true;
     // Применяем состояние
-    applyState(state);
+    applyState(appState);
     // Сохраняем в Firestore
-    writeState(state);
-    addToHistory(`Heirloom saved! (${state.completedHeirlooms.length})`, state.totalPacks);
+    writeState(appState);
+    addToHistory(`Heirloom saved! (${appState.completedHeirlooms.length})`, 0);
     updateUI();
-    showToast(`Progress saved! ${savedPacks} packs → Heirloom #${state.completedHeirlooms.length}`, "success");
+    showToast(`Progress saved! ${currentPacks} packs → Heirloom #${appState.completedHeirlooms.length}`, "success");
 }
 function resetAllData() {
     const emptyState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
