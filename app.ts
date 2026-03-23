@@ -332,7 +332,8 @@ function applyState(state: StoredState): void {
 }
 
 function updateUI(): void {
-  const state = readState();
+  const state = getState();
+  appState = { ...state };
   const remaining = Math.max(500 - state.totalPacks, 0);
   const percent = Math.min(state.totalPacks / 500, 1);
   const percentText = `${Math.round(percent * 100)}%`;
@@ -366,15 +367,7 @@ function updateUI(): void {
     }
   }
 
-  // Reset toggle button to OFF (always)
-  if (toggleHeirloom) {
-    toggleHeirloom.setAttribute("aria-pressed", "false");
-    const knob = toggleHeirloom.querySelector("div");
-    if (knob) {
-      knob.classList.remove("translate-x-6", "bg-primary");
-    }
-  }
-
+  // Сохраняем в Firestore
   writeState(state);
 }
 

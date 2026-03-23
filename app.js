@@ -285,7 +285,8 @@ function applyState(state) {
     }
 }
 function updateUI() {
-    const state = readState();
+    const state = getState();
+    appState = Object.assign({}, state);
     const remaining = Math.max(500 - state.totalPacks, 0);
     const percent = Math.min(state.totalPacks / 500, 1);
     const percentText = `${Math.round(percent * 100)}%`;
@@ -321,14 +322,7 @@ function updateUI() {
             completedSection.classList.add("hidden");
         }
     }
-    // Reset toggle button to OFF (always)
-    if (toggleHeirloom) {
-        toggleHeirloom.setAttribute("aria-pressed", "false");
-        const knob = toggleHeirloom.querySelector("div");
-        if (knob) {
-            knob.classList.remove("translate-x-6", "bg-primary");
-        }
-    }
+    // Сохраняем в Firestore
     writeState(state);
 }
 function calculateLevelPacks(totalLevel) {
