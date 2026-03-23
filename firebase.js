@@ -24,17 +24,23 @@ async function initFirebase() {
     try {
         app = firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
-        // Получаем Telegram user ID из initData
+        // Получаем Telegram user данные из initData
         const tg = (_a = window.Telegram) === null || _a === void 0 ? void 0 : _a.WebApp;
         if (tg === null || tg === void 0 ? void 0 : tg.initData) {
-            // Парсим initData для получения user_id
+            // Парсим initData для получения user данных
             const urlParams = new URLSearchParams(tg.initData);
             const userStr = urlParams.get('user');
             if (userStr) {
                 try {
                     const user = JSON.parse(decodeURIComponent(userStr));
-                    if (user.id) {
-                        telegramUserId = String(user.id);
+                    // Сначала пробуем username (он одинаковый везде)
+                    if (user.username) {
+                        telegramUserId = 'tg_' + user.username.toLowerCase();
+                        console.log('Telegram username ID:', telegramUserId);
+                    }
+                    // Fallback на user.id если нет username
+                    else if (user.id) {
+                        telegramUserId = 'uid_' + user.id;
                         console.log('Telegram user ID:', telegramUserId);
                     }
                 }
@@ -43,10 +49,10 @@ async function initFirebase() {
                 }
             }
         }
-        // Fallback: если нет Telegram ID, используем initData как ключ
-        if (!telegramUserId && (tg === null || tg === void 0 ? void 0 : tg.initData)) {
-            telegramUserId = 'tg_' + btoa(tg.initData).substr(0, 16);
-            console.log('Telegram fallback ID:', telegramUserId);
+        // Fallback: если нет Telegram данных, используем случайный ID
+        if (!telegramUserId) {
+            telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
+            console.log('Anonymous ID:', telegramUserId);
         }
         console.log('Firebase initialized');
         return true;
