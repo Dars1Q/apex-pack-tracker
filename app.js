@@ -21,11 +21,10 @@ function toNumber(value) {
     return Number.isFinite(n) ? n : 0;
 }
 function readState() {
-    // Читаем ТОЛЬКО из Firestore
     return {
         totalPacks: toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value),
         heirloom: (toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.getAttribute("aria-pressed")) === "true",
-        completedHeirlooms: []
+        completedHeirlooms: appState.completedHeirlooms
     };
 }
 function writeState(state) {
@@ -561,7 +560,6 @@ async function initializeApp() {
                 heirloom: firebaseData.heirloom || false,
                 completedHeirlooms: firebaseData.completedHeirlooms || []
             };
-            console.log('✓ Loaded from Firebase:', appState);
         }
     }
     bindEvents();

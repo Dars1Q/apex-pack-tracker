@@ -42,7 +42,6 @@ async function initFirebase() {
             telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
         }
         console.log('✓ Firebase initialized');
-        console.log('✓ User ID:', telegramUserId);
         return true;
     }
     catch (error) {
@@ -56,17 +55,11 @@ async function initFirebase() {
 function setTelegramUser(id) {
     telegramUserId = id;
 }
-/**
- * Получить ID пользователя (Telegram ID или random)
- */
 function getUserId() {
-    console.log('getUserId called. telegramUserId:', telegramUserId);
     if (telegramUserId)
         return telegramUserId;
     // Если нет Telegram ID, генерируем случайный
-    const anonId = `anon_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('Using anon ID:', anonId);
-    return anonId;
+    return `anon_${Math.random().toString(36).substr(2, 9)}`;
 }
 /**
  * Сохранение состояния в Firestore
@@ -78,10 +71,8 @@ async function saveToFirestore(data) {
     }
     try {
         const userId = getUserId();
-        console.log('>>> Saving to Firestore with userId:', userId);
         const userRef = db.collection('users').doc(userId);
         await userRef.set(Object.assign(Object.assign({}, data), { updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
-        console.log('✓ Saved to Firestore:', userId);
     }
     catch (error) {
         console.error('Save error:', error);
@@ -99,7 +90,6 @@ async function loadFromFirestore() {
         const doc = await userRef.get();
         if (doc.exists) {
             const data = doc.data();
-            console.log('Loaded from Firestore:', userId);
             return {
                 totalPacks: data.totalPacks || 0,
                 heirloom: data.heirloom || false,

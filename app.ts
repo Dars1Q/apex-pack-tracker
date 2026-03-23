@@ -44,11 +44,10 @@ function toNumber(value: string | null | undefined): number {
 }
 
 function readState(): StoredState {
-  // Читаем ТОЛЬКО из Firestore
   return {
     totalPacks: toNumber(totalPacksInput?.value),
     heirloom: toggleHeirloom?.getAttribute("aria-pressed") === "true",
-    completedHeirlooms: []
+    completedHeirlooms: appState.completedHeirlooms
   };
 }
 
@@ -643,7 +642,6 @@ async function initializeApp() {
         heirloom: firebaseData.heirloom || false,
         completedHeirlooms: firebaseData.completedHeirlooms || []
       };
-      console.log('✓ Loaded from Firebase:', appState);
     }
   }
   
