@@ -265,8 +265,8 @@ function showToast(message, type = "info", duration = 3000) {
 }
 function getState() {
     return {
-        totalPacks: appState.totalPacks,
-        heirloom: appState.heirloom,
+        totalPacks: toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value),
+        heirloom: (toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.getAttribute("aria-pressed")) === "true",
         completedHeirlooms: appState.completedHeirlooms
     };
 }
@@ -367,8 +367,9 @@ function quickAddPacks(count) {
         showToast("Enter a positive number", "error");
         return;
     }
-    const state = readState();
+    const state = getState();
     state.totalPacks += count;
+    appState = Object.assign({}, state);
     writeState(state);
     addToHistory(`Quick Add: +${count} packs`, state.totalPacks);
     updateUI();

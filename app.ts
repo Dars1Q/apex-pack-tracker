@@ -312,8 +312,8 @@ function showToast(message: string, type: ToastType = "info", duration = 3000): 
 
 function getState(): StoredState {
   return {
-    totalPacks: appState.totalPacks,
-    heirloom: appState.heirloom,
+    totalPacks: toNumber(totalPacksInput?.value),
+    heirloom: toggleHeirloom?.getAttribute("aria-pressed") === "true",
     completedHeirlooms: appState.completedHeirlooms
   };
 }
@@ -423,9 +423,10 @@ function quickAddPacks(count: number): void {
     showToast("Enter a positive number", "error");
     return;
   }
-  
-  const state = readState();
+
+  const state = getState();
   state.totalPacks += count;
+  appState = { ...state };
   writeState(state);
   addToHistory(`Quick Add: +${count} packs`, state.totalPacks);
   updateUI();
