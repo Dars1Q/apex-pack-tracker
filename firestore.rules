@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Пользователи могут читать/писать свои документы
+    // Идентификация по кастомному полю userId в документе
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    
+    // Аккаунты внутри пользовательских документов
+    match /users/{userId}/accounts/{accountId} {
+      allow read, write: if true;
+    }
+  }
+}

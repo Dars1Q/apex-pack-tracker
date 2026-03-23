@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Apex Pack Tracker - Calculator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-fixed": "#1a1b1f",
+                        "tertiary-fixed": "#e3e2e7",
+                        "on-secondary-fixed-variant": "#604100",
+                        "secondary": "#ffd799",
+                        "surface-tint": "#ffb3ad",
+                        "inverse-on-surface": "#313030",
+                        "secondary-fixed-dim": "#ffba38",
+                        "surface-container-low": "#1c1b1b",
+                        "on-surface-variant": "#e4bdba",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#281900",
+                        "primary-fixed": "#ffdad6",
+                        "on-tertiary": "#2f3034",
+                        "inverse-primary": "#bb161f",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#46464b",
+                        "surface-container-high": "#2a2a2a",
+                        "surface-variant": "#353534",
+                        "error-container": "#93000a",
+                        "surface-dim": "#131313",
+                        "secondary-container": "#feb300",
+                        "on-primary-fixed": "#410003",
+                        "on-primary-fixed-variant": "#930010",
+                        "on-background": "#e5e2e1",
+                        "on-surface": "#e5e2e1",
+                        "on-secondary": "#432c00",
+                        "outline-variant": "#5b403d",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-fixed": "#ffdeac",
+                        "background": "#131313",
+                        "surface-container": "#201f1f",
+                        "tertiary-fixed-dim": "#c6c6cb",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-container": "#ff544e",
+                        "on-secondary-container": "#6a4800",
+                        "error": "#ffb4ab",
+                        "surface": "#131313",
+                        "surface-bright": "#393939",
+                        "tertiary": "#c6c6cb",
+                        "on-tertiary-container": "#282a2e",
+                        "on-primary": "#680008",
+                        "primary": "#ffb3ad",
+                        "on-primary-container": "#5c0006",
+                        "primary-fixed-dim": "#ffb3ad",
+                        "outline": "#ab8885",
+                        "surface-container-highest": "#353534",
+                        "tertiary-container": "#909095"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #131313;
+            color: #e5e2e1;
+            font-family: 'Inter', sans-serif;
+            width: 390px;
+            margin: 0 auto;
+            min-height: 844px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-background hide-scrollbar pb-48">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-[390px] z-50 bg-[#131313]/80 backdrop-blur-lg flex justify-between items-center px-6 h-16 border-b border-white/5">
+<div class="flex items-center gap-2 active:scale-95 duration-200 cursor-pointer">
+<span class="material-symbols-outlined text-[#ffb3ad]">menu</span>
+</div>
+<h1 class="font-['Space_Grotesk'] uppercase tracking-[0.05em] text-sm text-[#ffb3ad] font-bold">PACK TRACKER</h1>
+<div class="flex items-center gap-2 active:scale-95 duration-200 cursor-pointer">
+<span class="material-symbols-outlined text-[#ffb3ad]">history</span>
+</div>
+</header>
+<main class="pt-24 px-6 space-y-10">
+<!-- Section Header -->
+<div class="space-y-1">
+<p class="font-headline text-[10px] tracking-[0.2em] text-primary uppercase font-bold">Operation: Calculation</p>
+<h2 class="font-headline text-2xl font-bold uppercase text-on-surface">Telemetry Input</h2>
+</div>
+<!-- Section 1: Account Progress -->
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-6 bg-primary rounded-full"></div>
+<h3 class="font-headline text-sm font-bold tracking-widest text-on-surface-variant uppercase">Account Progress</h3>
+</div>
+<div class="bg-surface-container rounded-2xl p-6 space-y-8">
+<!-- Account Level -->
+<div class="space-y-3">
+<div class="flex flex-col">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Account Level</label>
+<span class="text-[10px] text-outline">Your current level shown in-game (Max 500)</span>
+</div>
+<div class="relative group">
+<input class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-secondary focus:ring-2 rounded-xl py-5 px-5 text-2xl font-headline font-bold text-on-surface transition-all outline-none" max="500" min="1" placeholder="500" type="number"/>
+<div class="absolute right-5 top-1/2 -translate-y-1/2 text-secondary/30 group-focus-within:text-secondary transition-colors">
+<span class="material-symbols-outlined text-2xl">trending_up</span>
+</div>
+</div>
+</div>
+<!-- Prestige Level -->
+<div class="space-y-3">
+<div class="flex flex-col">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Prestige / Bonus Level</label>
+<span class="text-[10px] text-outline">Levels earned after reaching Account Level 500</span>
+</div>
+<div class="relative group">
+<input class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-secondary focus:ring-2 rounded-xl py-5 px-5 text-2xl font-headline font-bold text-on-surface transition-all outline-none" placeholder="0" type="number"/>
+<div class="absolute right-5 top-1/2 -translate-y-1/2 text-secondary/30 group-focus-within:text-secondary transition-colors">
+<span class="material-symbols-outlined text-2xl">military_tech</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Pack History -->
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-6 bg-primary rounded-full"></div>
+<h3 class="font-headline text-sm font-bold tracking-widest text-on-surface-variant uppercase">Pack History</h3>
+</div>
+<div class="grid grid-cols-1 gap-4">
+<!-- Bought Packs -->
+<div class="bg-surface-container rounded-2xl p-5 flex items-center gap-4 active:scale-[0.98] transition-transform">
+<div class="flex-1 space-y-1">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Bought Packs</label>
+<p class="text-[10px] text-outline">Packs purchased with Apex Coins</p>
+</div>
+<input class="w-24 bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-secondary focus:ring-2 rounded-lg py-3 px-3 text-xl font-headline font-bold text-primary text-center outline-none transition-all" type="number" value="0"/>
+</div>
+<!-- Event Packs -->
+<div class="bg-surface-container rounded-2xl p-5 flex items-center gap-4 active:scale-[0.98] transition-transform">
+<div class="flex-1 space-y-1">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Event Packs</label>
+<p class="text-[10px] text-outline">Packs from Collection or Themed events</p>
+</div>
+<input class="w-24 bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-secondary focus:ring-2 rounded-lg py-3 px-3 text-xl font-headline font-bold text-primary text-center outline-none transition-all" type="number" value="0"/>
+</div>
+<!-- Battle Pass Packs -->
+<div class="bg-surface-container rounded-2xl p-5 flex items-center gap-4 active:scale-[0.98] transition-transform">
+<div class="flex-1 space-y-1">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Battle Pass Packs</label>
+<p class="text-[10px] text-outline">Packs earned from all past seasons</p>
+</div>
+<input class="w-24 bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-secondary focus:ring-2 rounded-lg py-3 px-3 text-xl font-headline font-bold text-primary text-center outline-none transition-all" type="number" value="0"/>
+</div>
+<!-- Bonus / Other Packs -->
+<div class="bg-surface-container rounded-2xl p-5 flex items-center gap-4 active:scale-[0.98] transition-transform">
+<div class="flex-1 space-y-1">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Bonus / Other Packs</label>
+<p class="text-[10px] text-outline">Packs from Twitch Prime, quests, etc.</p>
+</div>
+<input class="w-24 bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-secondary focus:ring-2 rounded-lg py-3 px-3 text-xl font-headline font-bold text-primary text-center outline-none transition-all" type="number" value="0"/>
+</div>
+</div>
+</div>
+<!-- Section 3: Status -->
+<div class="space-y-4 pb-12">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-6 bg-primary rounded-full"></div>
+<h3 class="font-headline text-sm font-bold tracking-widest text-on-surface-variant uppercase">Current Status</h3>
+</div>
+<div class="bg-surface-container rounded-2xl p-6 flex items-center justify-between gap-4">
+<div class="space-y-1">
+<label class="font-label text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">Heirloom already obtained?</label>
+<p class="text-[10px] text-outline italic">Enabling this resets the 500-pack pity counter</p>
+</div>
+<!-- Tactical Toggle -->
+<button class="shrink-0 w-14 h-8 bg-surface-container-highest rounded-full relative p-1.5 flex items-center transition-all group active:scale-95">
+<div class="w-5 h-5 bg-outline rounded-full shadow-lg transform transition-transform group-hover:bg-primary"></div>
+</button>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom CTA Area -->
+<div class="fixed bottom-20 left-1/2 -translate-x-1/2 w-[390px] px-6 py-6 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-40">
+<button class="pointer-events-auto w-full bg-gradient-to-br from-primary to-primary-container h-16 rounded-2xl flex items-center justify-center gap-3 shadow-[0_8px_32px_rgba(255,179,173,0.3)] active:scale-95 transition-all">
+<span class="font-headline font-extrabold text-on-primary tracking-[0.15em] uppercase text-lg">CALCULATE</span>
+<span class="material-symbols-outlined text-on-primary text-2xl">analytics</span>
+</button>
+</div>
+<!-- Bottom Nav Bar Anchor -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-[390px] z-50 bg-[#131313]/90 backdrop-blur-xl flex justify-around items-center h-20 border-t border-white/5 px-4">
+<div class="flex flex-col items-center justify-center text-outline-variant px-4 py-2 hover:text-[#ffb3ad] transition-colors cursor-pointer">
+<span class="material-symbols-outlined">home</span>
+<span class="font-['Inter'] uppercase tracking-[0.05em] text-[10px] font-bold mt-1">WELCOME</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#ffb3ad] bg-surface-container-highest/50 rounded-xl px-6 py-2 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">calculate</span>
+<span class="font-['Inter'] uppercase tracking-[0.05em] text-[10px] font-bold mt-1">TRACKER</span>
+</div>
+<div class="flex flex-col items-center justify-center text-outline-variant px-4 py-2 hover:text-[#ffb3ad] transition-colors cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['Inter'] uppercase tracking-[0.05em] text-[10px] font-bold mt-1">RESULTS</span>
+</div>
+</nav>
+<!-- Subtle Background Accent -->
+<div class="fixed top-0 right-0 w-80 h-80 bg-primary/10 blur-[140px] rounded-full -z-10"></div>
+<div class="fixed bottom-0 left-0 w-80 h-80 bg-secondary/5 blur-[140px] rounded-full -z-10"></div>
+</body></html>

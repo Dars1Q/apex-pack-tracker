@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "none",
+    "outFile": "app.js",
+    "strict": true,
+    "noEmitOnError": true,
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": ["types.d.ts", "app.ts"],
+  "exclude": ["firebase.ts"]
+}
