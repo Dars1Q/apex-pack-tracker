@@ -59,25 +59,13 @@ async function initFirebase(): Promise<boolean> {
     app = firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     
-    // Получаем Telegram user данные
+    // Получаем Telegram user данные из initData
     const tg = (window as any).Telegram?.WebApp;
-    console.log('Telegram WebApp:', !!tg);
-    console.log('Telegram initData:', tg?.initData ? 'present' : 'missing');
-    
-    // Сначала пробуем получить ID из localStorage (если уже сохраняли)
-    const storedUserId = localStorage.getItem('telegram_user_id');
-    if (storedUserId) {
-      telegramUserId = storedUserId;
-      console.log('✓ Using stored Telegram ID:', telegramUserId);
-    }
     
     if (tg?.initData) {
-      console.log('InitData length:', tg.initData.length);
-      
       // Парсим initData для получения user данных
       const urlParams = new URLSearchParams(tg.initData);
       const userStr = urlParams.get('user');
-      console.log('User string:', userStr ? 'found' : 'missing');
       
       if (userStr) {
         try {
@@ -86,36 +74,20 @@ async function initFirebase(): Promise<boolean> {
           // Используем user.id - он одинаковый на всех устройствах!
           if (user.id) {
             telegramUserId = 'tg_' + user.id;
-            localStorage.setItem('telegram_user_id', telegramUserId);
-            console.log('✓ Using user ID:', telegramUserId);
           }
           // Fallback на username если нет id
           else if (user.username) {
             telegramUserId = 'tg_' + user.username.toLowerCase();
-            localStorage.setItem('telegram_user_id', telegramUserId);
-            console.log('✓ Using username:', telegramUserId);
           }
         } catch (e) {
           console.error('Failed to parse Telegram user:', e);
         }
       }
-    } else if (tg) {
-      console.warn('Telegram WebApp available but no initData');
-      console.log('WebApp version:', tg.version);
-      console.log('WebApp platform:', tg.platform);
     }
     
-    // Fallback: если нет Telegram данных, используем stored или random ID
+    // Fallback: если нет Telegram initData, используем случайный ID
     if (!telegramUserId) {
-      const storedAnon = localStorage.getItem('anon_user_id');
-      if (storedAnon) {
-        telegramUserId = storedAnon;
-        console.log('✓ Using stored anon ID:', telegramUserId);
-      } else {
-        telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('anon_user_id', telegramUserId);
-        console.log('⚠ Using new anon ID:', telegramUserId);
-      }
+      telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
     }
     
     console.log('✓ Firebase initialized');
