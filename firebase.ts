@@ -76,18 +76,29 @@ async function initFirebase(): Promise<boolean> {
       if (userStr) {
         try {
           const user = JSON.parse(decodeURIComponent(userStr));
-          console.log('Parsed user:', user);
+          console.log('Parsed Telegram user:', user);
+          console.log('Username:', user.username);
+          console.log('User ID:', user.id);
           
-          // Используем ТОЛЬКО username - он одинаковый на всех устройствах!
+          // Используем username если есть - он одинаковый на всех устройствах!
           if (user.username) {
             telegramUserId = 'tg_' + user.username.toLowerCase();
             console.log('✓ Using username:', telegramUserId);
-          } else {
-            console.error('No username in Telegram user data!');
+          } 
+          // Если нет username - используем user.id (тоже одинаковый!)
+          else if (user.id) {
+            telegramUserId = 'tg_' + user.id;
+            console.log('✓ Using user ID:', telegramUserId);
+          }
+          else {
+            console.error('No username or user.id in Telegram data!');
           }
         } catch (e) {
-          console.error('Failed to parse user:', e);
+          console.error('Failed to parse Telegram user:', e);
+          console.error('Raw user string:', userStr);
         }
+      } else {
+        console.error('No user data in Telegram initData!');
       }
     } else if (tg) {
       console.warn('Telegram WebApp available but no initData');
