@@ -53,8 +53,8 @@ function readState(): StoredState {
 }
 
 function writeState(state: StoredState): void {
-  // Сохраняем ТОЛЬКО в Firestore
-  if (window.firebaseAuth?.isSignedIn()) {
+  // Сохраняем в Firestore ВСЕГДА
+  if (window.firebaseAuth) {
     window.firebaseAuth.saveToFirestore({
       totalPacks: state.totalPacks,
       heirloom: state.heirloom,
@@ -433,7 +433,7 @@ function quickAddPacks(count: number): void {
 }
 
 function markHeirloomObtained(): void {
-  const state = readState();
+  const state = getState();
 
   if (state.totalPacks <= 0) {
     showToast("No packs to save!", "error");
@@ -444,50 +444,20 @@ function markHeirloomObtained(): void {
 
   // Сохраняем текущий прогресс как завершённую реликвию
   state.completedHeirlooms.push(savedPacks);
-  
+
   // Сбрасываем счётчик на 0
   state.totalPacks = 0;
-  
+
   // Включаем Heirloom
   state.heirloom = true;
 
-  // Сохраняем completedHeirlooms в ОТДЕЛЬНЫЙ ключ localStorage
-  localStorage.setItem(STORAGE_KEY + "_completed", JSON.stringify(state.completedHeirlooms));
-  
-  // Сохраняем состояние в localStorage
-  writeState(state);
-  
-  // Сохраняем в текущий аккаунт если есть
-  const currentId = getCurrentAccountId();
-  if (currentId) {
-    const accounts = readAccounts();
-    const accountIndex = accounts.findIndex(a => a.id === currentId);
-    if (accountIndex >= 0) {
-      accounts[accountIndex].state = { ...state };
-      writeAccounts(accounts);
-    }
-  }
+  // Применяем состояние
+  applyState(state);
   
   // Сохраняем в Firestore
-  if (window.firebaseAuth?.isSignedIn()) {
-    window.firebaseAuth.saveToFirestore({
-      totalPacks: state.totalPacks,
-      heirloom: state.heirloom,
-      completedHeirlooms: state.completedHeirlooms,
-      updatedAt: Date.now()
-    });
-  }
+  writeState(state);
 
   addToHistory(`Heirloom saved! (${state.completedHeirlooms.length})`, state.totalPacks);
-  
-  // Обновляем переключатель
-  if (toggleHeirloom) {
-    toggleHeirloom.setAttribute("aria-pressed", "true");
-    const knob = toggleHeirloom.querySelector("div");
-    if (knob) {
-      knob.classList.add("translate-x-6", "bg-primary");
-    }
-  }
 
   updateUI();
   showToast(`Progress saved! ${savedPacks} packs → Heirloom #${state.completedHeirlooms.length}`, "success");
