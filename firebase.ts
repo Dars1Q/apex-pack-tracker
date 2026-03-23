@@ -121,9 +121,12 @@ function setTelegramUser(id: string): void {
  * Получить ID пользователя (Telegram ID или random)
  */
 function getUserId(): string {
+  console.log('getUserId called. telegramUserId:', telegramUserId);
   if (telegramUserId) return telegramUserId;
   // Если нет Telegram ID, генерируем случайный
-  return `anon_${Math.random().toString(36).substr(2, 9)}`;
+  const anonId = `anon_${Math.random().toString(36).substr(2, 9)}`;
+  console.log('Using anon ID:', anonId);
+  return anonId;
 }
 
 /**
@@ -137,12 +140,13 @@ async function saveToFirestore(data: FirebaseState): Promise<void> {
 
   try {
     const userId = getUserId();
+    console.log('>>> Saving to Firestore with userId:', userId);
     const userRef = db.collection('users').doc(userId);
     await userRef.set({
       ...data,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-    console.log('Saved to Firestore:', userId);
+    console.log('✓ Saved to Firestore:', userId);
   } catch (error) {
     console.error('Save error:', error);
   }
