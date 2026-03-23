@@ -78,15 +78,10 @@ async function initFirebase(): Promise<boolean> {
           const user = JSON.parse(decodeURIComponent(userStr));
           console.log('Parsed user:', user);
           
-          // Используем ВСЕГДА user.id - он одинаковый везде!
+          // ВСЕГДА используем user.id - он одинаковый на всех устройствах!
           if (user.id) {
             telegramUserId = 'tg_' + user.id;
             console.log('✓ Using user ID:', telegramUserId);
-          }
-          // Fallback на username если нет ID (редко)
-          else if (user.username) {
-            telegramUserId = 'tg_' + user.username.toLowerCase();
-            console.log('⚠ Using username:', telegramUserId);
           }
         } catch (e) {
           console.error('Failed to parse user:', e);
