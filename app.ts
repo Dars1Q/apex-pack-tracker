@@ -310,10 +310,8 @@ function showToast(message: string, type: ToastType = "info", duration = 3000): 
 }
 
 function getState(): StoredState {
-  const inputValue = toNumber(totalPacksInput?.value);
   return {
-    // Если input пустой - берём из appState, иначе из input
-    totalPacks: inputValue > 0 ? inputValue : appState.totalPacks,
+    totalPacks: toNumber(totalPacksInput?.value),
     heirloom: toggleHeirloom?.getAttribute("aria-pressed") === "true",
     completedHeirlooms: appState.completedHeirlooms
   };
@@ -321,10 +319,6 @@ function getState(): StoredState {
 
 function applyState(state: StoredState): void {
   appState = { ...state };
-  // Обновляем input поле только если оно не в фокусе
-  if (totalPacksInput && document.activeElement !== totalPacksInput) {
-    totalPacksInput.value = state.totalPacks ? String(state.totalPacks) : "";
-  }
   if (toggleHeirloom) {
     toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
     const knob = toggleHeirloom.querySelector("div");
@@ -428,11 +422,16 @@ function quickAddPacks(count: number): void {
     return;
   }
 
-  const state = getState();
-  state.totalPacks += count;
-  appState = { ...state };
-  writeState(state);
-  addToHistory(`Quick Add: +${count} packs`, state.totalPacks);
+  // Добавляем к текущему значению
+  appState.totalPacks += count;
+  
+  // Обновляем input поле
+  if (totalPacksInput) {
+    totalPacksInput.value = String(appState.totalPacks);
+  }
+  
+  writeState(appState);
+  addToHistory(`Quick Add: +${count} packs`, appState.totalPacks);
   updateUI();
   showToast(`Added ${count} packs`, "success");
 }
