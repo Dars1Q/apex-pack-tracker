@@ -21,39 +21,16 @@ function toNumber(value) {
     return Number.isFinite(n) ? n : 0;
 }
 function readState() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const completedRaw = localStorage.getItem(STORAGE_KEY + "_completed");
-        if (!raw)
-            return { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
-        const parsed = JSON.parse(raw);
-        return {
-            totalPacks: parsed.totalPacks || 0,
-            heirloom: parsed.heirloom || false,
-            completedHeirlooms: completedRaw ? JSON.parse(completedRaw) : (parsed.completedHeirlooms || [])
-        };
-    }
-    catch (_a) {
-        return { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
-    }
+    // Читаем ТОЛЬКО из Firestore
+    return {
+        totalPacks: toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value),
+        heirloom: (toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.getAttribute("aria-pressed")) === "true",
+        completedHeirlooms: []
+    };
 }
-let lastState = null;
 function writeState(state) {
     var _a;
-    // Проверяем изменилось ли что-то
-    if (lastState &&
-        lastState.totalPacks === state.totalPacks &&
-        lastState.heirloom === state.heirloom &&
-        JSON.stringify(lastState.completedHeirlooms) === JSON.stringify(state.completedHeirlooms)) {
-        return; // Ничего не изменилось
-    }
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-    catch (_b) {
-        // ignore
-    }
-    // Сохраняем в Firestore если доступен
+    // Сохраняем ТОЛЬКО в Firestore
     if ((_a = window.firebaseAuth) === null || _a === void 0 ? void 0 : _a.isSignedIn()) {
         window.firebaseAuth.saveToFirestore({
             totalPacks: state.totalPacks,
@@ -62,7 +39,6 @@ function writeState(state) {
             updatedAt: Date.now()
         });
     }
-    lastState = Object.assign({}, state);
 }
 // Account management
 function readAccounts() {
@@ -289,14 +265,14 @@ function showToast(message, type = "info", duration = 3000) {
     }, duration);
 }
 function getState() {
-    const stored = readState();
     return {
-        totalPacks: toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value) || stored.totalPacks || 0,
-        heirloom: (toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.getAttribute("aria-pressed")) === "true",
-        completedHeirlooms: stored.completedHeirlooms || []
+        totalPacks: appState.totalPacks,
+        heirloom: appState.heirloom,
+        completedHeirlooms: appState.completedHeirlooms
     };
 }
 function applyState(state) {
+    appState = Object.assign({}, state);
     if (totalPacksInput)
         totalPacksInput.value = state.totalPacks ? String(state.totalPacks) : "";
     if (toggleHeirloom) {
@@ -307,8 +283,6 @@ function applyState(state) {
             knob.classList.toggle("bg-primary", state.heirloom);
         }
     }
-    // Сохраняем completedHeirlooms в localStorage
-    localStorage.setItem(STORAGE_KEY + "_completed", JSON.stringify(state.completedHeirlooms));
 }
 function updateUI() {
     const state = readState();
@@ -607,24 +581,21 @@ function bindEvents() {
     });
 }
 // Initialize
+let appState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
 async function initializeApp() {
     var _a;
     // Ждём инициализации Firebase
     await new Promise(resolve => setTimeout(resolve, 500));
-    // ВСЕГДА загружаем из Firestore если доступен (приоритет)
+    // ВСЕГДА загружаем из Firestore если доступен
     if ((_a = window.firebaseAuth) === null || _a === void 0 ? void 0 : _a.isSignedIn()) {
         const firebaseData = await window.firebaseAuth.loadFromFirestore();
         if (firebaseData) {
-            const state = {
+            appState = {
                 totalPacks: firebaseData.totalPacks || 0,
                 heirloom: firebaseData.heirloom || false,
                 completedHeirlooms: firebaseData.completedHeirlooms || []
             };
-            // Сохраняем в localStorage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-            localStorage.setItem(STORAGE_KEY + "_completed", JSON.stringify(state.completedHeirlooms));
-            applyState(state);
-            console.log('✓ Loaded from Firebase:', state);
+            console.log('✓ Loaded from Firebase:', appState);
         }
     }
     bindEvents();

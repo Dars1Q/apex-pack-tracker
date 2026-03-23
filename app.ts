@@ -44,39 +44,16 @@ function toNumber(value: string | null | undefined): number {
 }
 
 function readState(): StoredState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const completedRaw = localStorage.getItem(STORAGE_KEY + "_completed");
-    if (!raw) return { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
-    const parsed = JSON.parse(raw) as StoredState;
-    return {
-      totalPacks: parsed.totalPacks || 0,
-      heirloom: parsed.heirloom || false,
-      completedHeirlooms: completedRaw ? JSON.parse(completedRaw) : (parsed.completedHeirlooms || [])
-    };
-  } catch {
-    return { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
-  }
+  // Читаем ТОЛЬКО из Firestore
+  return {
+    totalPacks: toNumber(totalPacksInput?.value),
+    heirloom: toggleHeirloom?.getAttribute("aria-pressed") === "true",
+    completedHeirlooms: []
+  };
 }
 
-let lastState: StoredState | null = null;
-
 function writeState(state: StoredState): void {
-  // Проверяем изменилось ли что-то
-  if (lastState && 
-      lastState.totalPacks === state.totalPacks && 
-      lastState.heirloom === state.heirloom &&
-      JSON.stringify(lastState.completedHeirlooms) === JSON.stringify(state.completedHeirlooms)) {
-    return; // Ничего не изменилось
-  }
-  
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore
-  }
-  
-  // Сохраняем в Firestore если доступен
+  // Сохраняем ТОЛЬКО в Firestore
   if (window.firebaseAuth?.isSignedIn()) {
     window.firebaseAuth.saveToFirestore({
       totalPacks: state.totalPacks,
@@ -85,8 +62,6 @@ function writeState(state: StoredState): void {
       updatedAt: Date.now()
     });
   }
-  
-  lastState = { ...state };
 }
 
 // Account management
@@ -336,15 +311,15 @@ function showToast(message: string, type: ToastType = "info", duration = 3000): 
 }
 
 function getState(): StoredState {
-  const stored = readState();
   return {
-    totalPacks: toNumber(totalPacksInput?.value) || stored.totalPacks || 0,
-    heirloom: toggleHeirloom?.getAttribute("aria-pressed") === "true",
-    completedHeirlooms: stored.completedHeirlooms || []
+    totalPacks: appState.totalPacks,
+    heirloom: appState.heirloom,
+    completedHeirlooms: appState.completedHeirlooms
   };
 }
 
 function applyState(state: StoredState): void {
+  appState = { ...state };
   if (totalPacksInput) totalPacksInput.value = state.totalPacks ? String(state.totalPacks) : "";
   if (toggleHeirloom) {
     toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
@@ -354,8 +329,6 @@ function applyState(state: StoredState): void {
       knob.classList.toggle("bg-primary", state.heirloom);
     }
   }
-  // Сохраняем completedHeirlooms в localStorage
-  localStorage.setItem(STORAGE_KEY + "_completed", JSON.stringify(state.completedHeirlooms));
 }
 
 function updateUI(): void {
@@ -691,24 +664,22 @@ function bindEvents(): void {
 }
 
 // Initialize
+let appState: StoredState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
+
 async function initializeApp() {
   // Ждём инициализации Firebase
   await new Promise(resolve => setTimeout(resolve, 500));
   
-  // ВСЕГДА загружаем из Firestore если доступен (приоритет)
+  // ВСЕГДА загружаем из Firestore если доступен
   if (window.firebaseAuth?.isSignedIn()) {
     const firebaseData = await window.firebaseAuth.loadFromFirestore();
     if (firebaseData) {
-      const state = {
+      appState = {
         totalPacks: firebaseData.totalPacks || 0,
         heirloom: firebaseData.heirloom || false,
         completedHeirlooms: firebaseData.completedHeirlooms || []
       };
-      // Сохраняем в localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      localStorage.setItem(STORAGE_KEY + "_completed", JSON.stringify(state.completedHeirlooms));
-      applyState(state);
-      console.log('✓ Loaded from Firebase:', state);
+      console.log('✓ Loaded from Firebase:', appState);
     }
   }
   
