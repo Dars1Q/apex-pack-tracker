@@ -59,29 +59,19 @@ async function initFirebase(): Promise<boolean> {
     app = firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     
-    // Получаем Telegram user данные из initData
+    // Получаем Telegram user данные из initDataUnsafe (готовый объект)
     const tg = (window as any).Telegram?.WebApp;
     
-    if (tg?.initData) {
-      // Парсим initData для получения user данных
-      const urlParams = new URLSearchParams(tg.initData);
-      const userStr = urlParams.get('user');
+    if (tg?.initDataUnsafe?.user) {
+      const user = tg.initDataUnsafe.user;
       
-      if (userStr) {
-        try {
-          const user = JSON.parse(decodeURIComponent(userStr));
-          
-          // Используем user.id - он одинаковый на всех устройствах!
-          if (user.id) {
-            telegramUserId = 'tg_' + user.id;
-          }
-          // Fallback на username если нет id
-          else if (user.username) {
-            telegramUserId = 'tg_' + user.username.toLowerCase();
-          }
-        } catch (e) {
-          console.error('Failed to parse Telegram user:', e);
-        }
+      // Используем user.id - он одинаковый на всех устройствах!
+      if (user.id) {
+        telegramUserId = 'tg_' + user.id;
+      }
+      // Fallback на username если нет id
+      else if (user.username) {
+        telegramUserId = 'tg_' + user.username.toLowerCase();
       }
     }
     

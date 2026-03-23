@@ -16,7 +16,7 @@ let telegramUserId = null;
  * Инициализация Firebase
  */
 async function initFirebase() {
-    var _a;
+    var _a, _b;
     if (typeof firebase === 'undefined') {
         console.warn('Firebase SDK not loaded. Using local storage only.');
         return false;
@@ -24,27 +24,17 @@ async function initFirebase() {
     try {
         app = firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
-        // Получаем Telegram user данные из initData
+        // Получаем Telegram user данные из initDataUnsafe (готовый объект)
         const tg = (_a = window.Telegram) === null || _a === void 0 ? void 0 : _a.WebApp;
-        if (tg === null || tg === void 0 ? void 0 : tg.initData) {
-            // Парсим initData для получения user данных
-            const urlParams = new URLSearchParams(tg.initData);
-            const userStr = urlParams.get('user');
-            if (userStr) {
-                try {
-                    const user = JSON.parse(decodeURIComponent(userStr));
-                    // Используем user.id - он одинаковый на всех устройствах!
-                    if (user.id) {
-                        telegramUserId = 'tg_' + user.id;
-                    }
-                    // Fallback на username если нет id
-                    else if (user.username) {
-                        telegramUserId = 'tg_' + user.username.toLowerCase();
-                    }
-                }
-                catch (e) {
-                    console.error('Failed to parse Telegram user:', e);
-                }
+        if ((_b = tg === null || tg === void 0 ? void 0 : tg.initDataUnsafe) === null || _b === void 0 ? void 0 : _b.user) {
+            const user = tg.initDataUnsafe.user;
+            // Используем user.id - он одинаковый на всех устройствах!
+            if (user.id) {
+                telegramUserId = 'tg_' + user.id;
+            }
+            // Fallback на username если нет id
+            else if (user.username) {
+                telegramUserId = 'tg_' + user.username.toLowerCase();
             }
         }
         // Fallback: если нет Telegram initData, используем случайный ID
