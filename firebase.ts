@@ -62,22 +62,40 @@ async function initFirebase(): Promise<boolean> {
     // Получаем Telegram user данные из initDataUnsafe (готовый объект)
     const tg = (window as any).Telegram?.WebApp;
     
+    // Сначала пробуем получить из initDataUnsafe
     if (tg?.initDataUnsafe?.user) {
       const user = tg.initDataUnsafe.user;
       
       // Используем user.id - он одинаковый на всех устройствах!
       if (user.id) {
         telegramUserId = 'tg_' + user.id;
+        // Сохраняем в localStorage для будущих сессий
+        localStorage.setItem('apex_user_id', telegramUserId);
       }
       // Fallback на username если нет id
       else if (user.username) {
         telegramUserId = 'tg_' + user.username.toLowerCase();
+        localStorage.setItem('apex_user_id', telegramUserId);
       }
     }
     
-    // Fallback: если нет Telegram initData, используем случайный ID
+    // Если нет initDataUnsafe, пробуем получить из localStorage
     if (!telegramUserId) {
-      telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
+      const stored = localStorage.getItem('apex_user_id');
+      if (stored) {
+        telegramUserId = stored;
+      }
+    }
+    
+    // Fallback: если нет Telegram данных, используем stored anon или random ID
+    if (!telegramUserId) {
+      const storedAnon = localStorage.getItem('apex_anon_id');
+      if (storedAnon) {
+        telegramUserId = storedAnon;
+      } else {
+        telegramUserId = 'anon_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('apex_anon_id', telegramUserId);
+      }
     }
     
     console.log('✓ Firebase initialized');
