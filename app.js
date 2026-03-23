@@ -610,8 +610,8 @@ function bindEvents() {
 async function initializeApp() {
     var _a;
     // Ждём инициализации Firebase
-    await new Promise(resolve => setTimeout(resolve, 100));
-    // Пытаемся загрузить из Firestore
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // ВСЕГДА загружаем из Firestore если доступен (приоритет)
     if ((_a = window.firebaseAuth) === null || _a === void 0 ? void 0 : _a.isSignedIn()) {
         const firebaseData = await window.firebaseAuth.loadFromFirestore();
         if (firebaseData) {
@@ -620,9 +620,11 @@ async function initializeApp() {
                 heirloom: firebaseData.heirloom || false,
                 completedHeirlooms: firebaseData.completedHeirlooms || []
             };
+            // Сохраняем в localStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            localStorage.setItem(STORAGE_KEY + "_completed", JSON.stringify(state.completedHeirlooms));
             applyState(state);
-            writeState(state);
-            console.log('Loaded from Firebase');
+            console.log('✓ Loaded from Firebase:', state);
         }
     }
     bindEvents();
