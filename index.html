@@ -489,19 +489,19 @@
       <div class="h-16 bg-[#131313]/60 backdrop-blur-md shadow-[0_0_24px_rgba(255,179,173,0.05)]"></div>
     </div>
 
-    <!-- Модальное окно подтверждения сброса -->
+    <!-- Reset confirmation modal -->
     <div id="modal-reset" class="fixed inset-0 z-[60] hidden">
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" data-modal-close></div>
       <div class="absolute inset-x-0 bottom-0 max-w-[420px] mx-auto p-6">
         <div class="bg-[#2a2a2a] rounded-2xl p-6 border border-outline-variant/20 shadow-2xl">
           <div class="flex items-center gap-3 mb-4">
             <span class="material-symbols-outlined text-error text-3xl">warning</span>
-            <h3 class="font-headline text-xl font-bold text-on-surface">Сброс данных?</h3>
+            <h3 class="font-headline text-xl font-bold text-on-surface">Reset all data?</h3>
           </div>
-          <p class="text-on-surface-variant text-sm mb-6">Все сохранённые данные будут удалены. Это действие нельзя отменить.</p>
+          <p class="text-on-surface-variant text-sm mb-6">All your progress will be deleted. This action cannot be undone.</p>
           <div class="flex gap-3">
-            <button class="flex-1 bg-surface-container-highest text-on-surface font-headline font-bold uppercase tracking-wider py-3 rounded-xl active:scale-95 transition-transform" data-modal-close>Отмена</button>
-            <button id="btn-confirm-reset" class="flex-1 bg-error text-on-error font-headline font-bold uppercase tracking-wider py-3 rounded-xl active:scale-95 transition-transform">Сбросить</button>
+            <button class="flex-1 bg-surface-container-highest text-on-surface font-headline font-bold uppercase tracking-wider py-3 rounded-xl active:scale-95 transition-transform" data-modal-close>Cancel</button>
+            <button id="btn-confirm-reset" class="flex-1 bg-error text-on-error font-headline font-bold uppercase tracking-wider py-3 rounded-xl active:scale-95 transition-transform">Reset</button>
           </div>
         </div>
       </div>
