@@ -331,8 +331,8 @@ function applyState(state: StoredState): void {
 }
 
 function updateUI(): void {
-  const state = getState();
-  // НЕ обновляем appState здесь - это делает real-time listener
+  // Используем appState напрямую, а не getState() чтобы не читать из input
+  const state = appState;
   const remaining = Math.max(500 - state.totalPacks, 0);
   const percent = Math.min(state.totalPacks / 500, 1);
   const percentText = `${Math.round(percent * 100)}%`;
