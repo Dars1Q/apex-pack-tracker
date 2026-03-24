@@ -37,8 +37,8 @@ jobs:
 
       - name: Build
         run: |
-          npx tsc -p tsconfig.json --ignoreConfig
-          npx tsc firebase.ts --outFile firebase.js --target ES2017 --module amd --ignoreConfig
+          npx tsc -p tsconfig.json --ignoreDeprecations 6.0
+          npx tsc firebase.ts --outFile firebase.js --target ES2017 --module amd --ignoreDeprecations 6.0
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
