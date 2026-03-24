@@ -65,7 +65,29 @@ function writeState(state: StoredState): void {
 }
 
 // Account management
-function readAccounts(): Account[] {
+async function readAccounts(): Promise<Account[]> {
+  // Сначала пробуем загрузить из Firestore
+  if (window.firebaseAuth) {
+    try {
+      const firebaseAccounts = await window.firebaseAuth.loadAccountsFromFirestore();
+      if (firebaseAccounts && firebaseAccounts.length > 0) {
+        return firebaseAccounts.map((acc: any) => ({
+          id: acc.id,
+          name: acc.name,
+          state: {
+            totalPacks: acc.state?.totalPacks || 0,
+            heirloom: acc.state?.heirloom || false,
+            completedHeirlooms: acc.state?.completedHeirlooms || []
+          },
+          createdAt: acc.createdAt || Date.now()
+        }));
+      }
+    } catch (e) {
+      console.warn('Failed to load accounts from Firestore, using localStorage');
+    }
+  }
+  
+  // Fallback на localStorage
   try {
     const raw = localStorage.getItem(ACCOUNTS_KEY);
     if (!raw) return [];
@@ -75,7 +97,26 @@ function readAccounts(): Account[] {
   }
 }
 
-function writeAccounts(accounts: Account[]): void {
+async function writeAccounts(accounts: Account[]): Promise<void> {
+  // Сохраняем в Firestore
+  if (window.firebaseAuth) {
+    try {
+      for (const account of accounts) {
+        await window.firebaseAuth.saveAccountToFirestore(
+          account.id,
+          account.name,
+          {
+            ...account.state,
+            updatedAt: Date.now()
+          }
+        );
+      }
+    } catch (e) {
+      console.warn('Failed to save accounts to Firestore');
+    }
+  }
+  
+  // Также сохраняем в localStorage для кэша
   try {
     localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
   } catch {
@@ -91,8 +132,8 @@ function setCurrentAccountId(id: string): void {
   localStorage.setItem(CURRENT_ACCOUNT_KEY, id);
 }
 
-function createAccount(name: string): Account {
-  const accounts = readAccounts();
+async function createAccount(name: string): Promise<Account> {
+  const accounts = await readAccounts();
   const id = `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const account: Account = {
     id,
@@ -101,18 +142,18 @@ function createAccount(name: string): Account {
     createdAt: Date.now()
   };
   accounts.push(account);
-  writeAccounts(accounts);
+  await writeAccounts(accounts);
   return account;
 }
 
-function switchAccount(id: string): boolean {
-  const accounts = readAccounts();
+async function switchAccount(id: string): Promise<boolean> {
+  const accounts = await readAccounts();
   const account = accounts.find(a => a.id === id);
   if (!account) return false;
 
   // Сохраняем текущее состояние ТЕКУЩЕГО аккаунта
   const currentState = getState();
-  
+
   // Находим и обновляем текущий аккаунт в списке
   const currentId = getCurrentAccountId();
   if (currentId) {
@@ -121,7 +162,7 @@ function switchAccount(id: string): boolean {
       accounts[currentAccountIndex].state = { ...currentState };
     }
   }
-  
+
   writeState(currentState);
 
   // Переключаемся на новый аккаунт
@@ -130,25 +171,34 @@ function switchAccount(id: string): boolean {
   // Применяем состояние нового аккаунта
   applyState(account.state);
   writeState(account.state);
-  
+
   // Сохраняем обновлённый список аккаунтов
-  writeAccounts(accounts);
+  await writeAccounts(accounts);
 
   return true;
 }
 
-function deleteAccount(id: string): boolean {
-  let accounts = readAccounts();
+async function deleteAccount(id: string): Promise<boolean> {
+  let accounts = await readAccounts();
   const idx = accounts.findIndex(a => a.id === id);
   if (idx === -1) return false;
-  
+
   accounts.splice(idx, 1);
-  writeAccounts(accounts);
+  await writeAccounts(accounts);
   
+  // Удаляем из Firestore
+  if (window.firebaseAuth) {
+    try {
+      await window.firebaseAuth.deleteAccountFromFirestore(id);
+    } catch (e) {
+      console.warn('Failed to delete account from Firestore');
+    }
+  }
+
   const currentId = getCurrentAccountId();
   if (currentId === id) {
     if (accounts.length > 0) {
-      switchAccount(accounts[0].id);
+      await switchAccount(accounts[0].id);
     } else {
       localStorage.removeItem(CURRENT_ACCOUNT_KEY);
     }
@@ -156,11 +206,11 @@ function deleteAccount(id: string): boolean {
   return true;
 }
 
-function renderAccountSwitcher(): void {
+async function renderAccountSwitcher(): Promise<void> {
   const container = document.getElementById("account-list");
   if (!container) return;
 
-  const accounts = readAccounts();
+  const accounts = await readAccounts();
   const currentId = getCurrentAccountId();
 
   if (accounts.length === 0) {
@@ -196,14 +246,15 @@ function renderAccountSwitcher(): void {
   }).join("");
 
   container.querySelectorAll(".account-switch").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", async (e) => {
       const accountId = (e.currentTarget as HTMLElement).getAttribute("data-account-id");
       if (accountId) {
-        const account = readAccounts().find(a => a.id === accountId);
+        const accounts = await readAccounts();
+        const account = accounts.find(a => a.id === accountId);
         if (account) {
-          switchAccount(accountId);
+          await switchAccount(accountId);
           updateUI();
-          renderAccountSwitcher();
+          await renderAccountSwitcher();
           showToast(`Switched to ${account.name}`, "success");
         }
       }
@@ -211,13 +262,14 @@ function renderAccountSwitcher(): void {
   });
 
   container.querySelectorAll(".account-delete").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", async (e) => {
       const accountId = (e.currentTarget as HTMLElement).getAttribute("data-account-id");
       if (accountId) {
-        const account = readAccounts().find(a => a.id === accountId);
+        const accounts = await readAccounts();
+        const account = accounts.find(a => a.id === accountId);
         if (confirm(`Delete "${account?.name}"?`)) {
-          deleteAccount(accountId);
-          renderAccountSwitcher();
+          await deleteAccount(accountId);
+          await renderAccountSwitcher();
           updateUI();
           showToast("Account deleted", "info");
         }
@@ -652,10 +704,10 @@ function bindEvents(): void {
   });
 
   // Accounts
-  document.getElementById("btn-accounts")?.addEventListener("click", () => {
+  document.getElementById("btn-accounts")?.addEventListener("click", async () => {
     const modal = document.getElementById("modal-accounts");
     modal?.classList.remove("hidden");
-    renderAccountSwitcher();
+    await renderAccountSwitcher();
   });
 
   document.querySelectorAll("[data-accounts-modal-close]").forEach((el) => {
@@ -664,16 +716,16 @@ function bindEvents(): void {
     });
   });
 
-  document.getElementById("btn-add-account")?.addEventListener("click", () => {
+  document.getElementById("btn-add-account")?.addEventListener("click", async () => {
     const input = document.getElementById("new-account-name") as HTMLInputElement | null;
     const name = input?.value?.trim() || "";
     if (!name) {
       showToast("Enter account name", "error");
       return;
     }
-    const account = createAccount(name);
-    switchAccount(account.id);
-    renderAccountSwitcher();
+    const account = await createAccount(name);
+    await switchAccount(account.id);
+    await renderAccountSwitcher();
     input!.value = "";
     showToast(`Account "${name}" created`, "success");
   });

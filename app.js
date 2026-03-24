@@ -40,7 +40,32 @@ function writeState(state) {
     // НЕ сохраняем в localStorage здесь - это делает real-time listener
 }
 // Account management
-function readAccounts() {
+async function readAccounts() {
+    // Сначала пробуем загрузить из Firestore
+    if (window.firebaseAuth) {
+        try {
+            const firebaseAccounts = await window.firebaseAuth.loadAccountsFromFirestore();
+            if (firebaseAccounts && firebaseAccounts.length > 0) {
+                return firebaseAccounts.map((acc) => {
+                    var _a, _b, _c;
+                    return ({
+                        id: acc.id,
+                        name: acc.name,
+                        state: {
+                            totalPacks: ((_a = acc.state) === null || _a === void 0 ? void 0 : _a.totalPacks) || 0,
+                            heirloom: ((_b = acc.state) === null || _b === void 0 ? void 0 : _b.heirloom) || false,
+                            completedHeirlooms: ((_c = acc.state) === null || _c === void 0 ? void 0 : _c.completedHeirlooms) || []
+                        },
+                        createdAt: acc.createdAt || Date.now()
+                    });
+                });
+            }
+        }
+        catch (e) {
+            console.warn('Failed to load accounts from Firestore, using localStorage');
+        }
+    }
+    // Fallback на localStorage
     try {
         const raw = localStorage.getItem(ACCOUNTS_KEY);
         if (!raw)
@@ -51,7 +76,19 @@ function readAccounts() {
         return [];
     }
 }
-function writeAccounts(accounts) {
+async function writeAccounts(accounts) {
+    // Сохраняем в Firestore
+    if (window.firebaseAuth) {
+        try {
+            for (const account of accounts) {
+                await window.firebaseAuth.saveAccountToFirestore(account.id, account.name, Object.assign(Object.assign({}, account.state), { updatedAt: Date.now() }));
+            }
+        }
+        catch (e) {
+            console.warn('Failed to save accounts to Firestore');
+        }
+    }
+    // Также сохраняем в localStorage для кэша
     try {
         localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
     }
@@ -65,8 +102,8 @@ function getCurrentAccountId() {
 function setCurrentAccountId(id) {
     localStorage.setItem(CURRENT_ACCOUNT_KEY, id);
 }
-function createAccount(name) {
-    const accounts = readAccounts();
+async function createAccount(name) {
+    const accounts = await readAccounts();
     const id = `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const account = {
         id,
@@ -75,11 +112,11 @@ function createAccount(name) {
         createdAt: Date.now()
     };
     accounts.push(account);
-    writeAccounts(accounts);
+    await writeAccounts(accounts);
     return account;
 }
-function switchAccount(id) {
-    const accounts = readAccounts();
+async function switchAccount(id) {
+    const accounts = await readAccounts();
     const account = accounts.find(a => a.id === id);
     if (!account)
         return false;
@@ -100,20 +137,29 @@ function switchAccount(id) {
     applyState(account.state);
     writeState(account.state);
     // Сохраняем обновлённый список аккаунтов
-    writeAccounts(accounts);
+    await writeAccounts(accounts);
     return true;
 }
-function deleteAccount(id) {
-    let accounts = readAccounts();
+async function deleteAccount(id) {
+    let accounts = await readAccounts();
     const idx = accounts.findIndex(a => a.id === id);
     if (idx === -1)
         return false;
     accounts.splice(idx, 1);
-    writeAccounts(accounts);
+    await writeAccounts(accounts);
+    // Удаляем из Firestore
+    if (window.firebaseAuth) {
+        try {
+            await window.firebaseAuth.deleteAccountFromFirestore(id);
+        }
+        catch (e) {
+            console.warn('Failed to delete account from Firestore');
+        }
+    }
     const currentId = getCurrentAccountId();
     if (currentId === id) {
         if (accounts.length > 0) {
-            switchAccount(accounts[0].id);
+            await switchAccount(accounts[0].id);
         }
         else {
             localStorage.removeItem(CURRENT_ACCOUNT_KEY);
@@ -121,11 +167,11 @@ function deleteAccount(id) {
     }
     return true;
 }
-function renderAccountSwitcher() {
+async function renderAccountSwitcher() {
     const container = document.getElementById("account-list");
     if (!container)
         return;
-    const accounts = readAccounts();
+    const accounts = await readAccounts();
     const currentId = getCurrentAccountId();
     if (accounts.length === 0) {
         container.innerHTML = `<div class="text-center py-4"><p class="text-on-surface-variant text-sm">No saved accounts</p></div>`;
@@ -159,27 +205,29 @@ function renderAccountSwitcher() {
     `;
     }).join("");
     container.querySelectorAll(".account-switch").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
+        btn.addEventListener("click", async (e) => {
             const accountId = e.currentTarget.getAttribute("data-account-id");
             if (accountId) {
-                const account = readAccounts().find(a => a.id === accountId);
+                const accounts = await readAccounts();
+                const account = accounts.find(a => a.id === accountId);
                 if (account) {
-                    switchAccount(accountId);
+                    await switchAccount(accountId);
                     updateUI();
-                    renderAccountSwitcher();
+                    await renderAccountSwitcher();
                     showToast(`Switched to ${account.name}`, "success");
                 }
             }
         });
     });
     container.querySelectorAll(".account-delete").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
+        btn.addEventListener("click", async (e) => {
             const accountId = e.currentTarget.getAttribute("data-account-id");
             if (accountId) {
-                const account = readAccounts().find(a => a.id === accountId);
+                const accounts = await readAccounts();
+                const account = accounts.find(a => a.id === accountId);
                 if (confirm(`Delete "${account === null || account === void 0 ? void 0 : account.name}"?`)) {
-                    deleteAccount(accountId);
-                    renderAccountSwitcher();
+                    await deleteAccount(accountId);
+                    await renderAccountSwitcher();
                     updateUI();
                     showToast("Account deleted", "info");
                 }
@@ -569,10 +617,10 @@ function bindEvents() {
         }
     });
     // Accounts
-    (_f = document.getElementById("btn-accounts")) === null || _f === void 0 ? void 0 : _f.addEventListener("click", () => {
+    (_f = document.getElementById("btn-accounts")) === null || _f === void 0 ? void 0 : _f.addEventListener("click", async () => {
         const modal = document.getElementById("modal-accounts");
         modal === null || modal === void 0 ? void 0 : modal.classList.remove("hidden");
-        renderAccountSwitcher();
+        await renderAccountSwitcher();
     });
     document.querySelectorAll("[data-accounts-modal-close]").forEach((el) => {
         el.addEventListener("click", () => {
@@ -580,7 +628,7 @@ function bindEvents() {
             (_a = document.getElementById("modal-accounts")) === null || _a === void 0 ? void 0 : _a.classList.add("hidden");
         });
     });
-    (_g = document.getElementById("btn-add-account")) === null || _g === void 0 ? void 0 : _g.addEventListener("click", () => {
+    (_g = document.getElementById("btn-add-account")) === null || _g === void 0 ? void 0 : _g.addEventListener("click", async () => {
         var _a;
         const input = document.getElementById("new-account-name");
         const name = ((_a = input === null || input === void 0 ? void 0 : input.value) === null || _a === void 0 ? void 0 : _a.trim()) || "";
@@ -588,9 +636,9 @@ function bindEvents() {
             showToast("Enter account name", "error");
             return;
         }
-        const account = createAccount(name);
-        switchAccount(account.id);
-        renderAccountSwitcher();
+        const account = await createAccount(name);
+        await switchAccount(account.id);
+        await renderAccountSwitcher();
         input.value = "";
         showToast(`Account "${name}" created`, "success");
     });
