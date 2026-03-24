@@ -8,7 +8,8 @@
     "serve": "npx serve .",
     "dev": "concurrently \"npm run watch\" \"npm run serve\"",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d ."
+    "deploy": "gh-pages -d .",
+    "deploy:firebase": "firebase deploy --only hosting"
   },
   "keywords": [
     "apex-legends",

@@ -63,6 +63,7 @@ declare global {
       deleteAccountFromFirestore: (accountId: string) => Promise<void>;
       isSignedIn: () => boolean;
       getCurrentUser: () => { uid: string };
+      subscribeToChanges: (callback: (data: FirebaseState) => void) => () => void;
     };
     Telegram?: {
       WebApp: TelegramWebApp;

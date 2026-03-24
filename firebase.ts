@@ -14,6 +14,8 @@ declare const firebase: any;
 // Инициализация Firebase
 let app: any = null;
 let db: any = null;
+let unsubscribeListener: (() => void) | null = null;
+let onStateChangeCallback: ((data: FirebaseState) => void) | null = null;
 
 // Telegram user ID для идентификации
 let telegramUserId: string | null = null;
@@ -44,6 +46,7 @@ interface FirebaseAuthAPI {
   loadAccountsFromFirestore: () => Promise<any[]>;
   deleteAccountFromFirestore: (accountId: string) => Promise<void>;
   isSignedIn: () => boolean;
+  subscribeToChanges: (callback: (data: FirebaseState) => void) => () => void;
 }
 
 /**
@@ -224,6 +227,52 @@ async function deleteAccountFromFirestore(accountId: string): Promise<void> {
   }
 }
 
+/**
+ * Подписка на изменения в Firestore (real-time синхронизация)
+ */
+function subscribeToChanges(callback: (data: FirebaseState) => void): () => void {
+  if (!db) {
+    console.warn('Firestore not available for real-time sync');
+    return () => {};
+  }
+
+  try {
+    const userId = getUserId();
+    const userRef = db.collection('users').doc(userId);
+
+    // Отписываемся от предыдущего слушателя если есть
+    if (unsubscribeListener) {
+      unsubscribeListener();
+    }
+
+    // Подписываемся на изменения
+    unsubscribeListener = userRef.onSnapshot(
+      (doc: any) => {
+        if (doc.exists) {
+          const data = doc.data() as FirebaseState;
+          const state: FirebaseState = {
+            totalPacks: data.totalPacks || 0,
+            heirloom: data.heirloom || false,
+            completedHeirlooms: data.completedHeirlooms || [],
+            updatedAt: data.updatedAt || Date.now()
+          };
+          console.log('🔄 Real-time sync: received update from Firestore', state);
+          callback(state);
+        }
+      },
+      (error: any) => {
+        console.error('Real-time sync error:', error);
+      }
+    );
+
+    console.log('✓ Real-time sync enabled for user:', userId);
+    return unsubscribeListener;
+  } catch (error) {
+    console.error('Subscribe to changes error:', error);
+    return () => {};
+  }
+}
+
 // Экспорт для использования в app.ts
 (window as any).firebaseAuth = {
   initFirebase,
@@ -234,5 +283,6 @@ async function deleteAccountFromFirestore(accountId: string): Promise<void> {
   loadAccountsFromFirestore,
   deleteAccountFromFirestore,
   isSignedIn: () => !!db,
-  getCurrentUser: () => ({ uid: getUserId() })
+  getCurrentUser: () => ({ uid: getUserId() }),
+  subscribeToChanges
 } as FirebaseAuthAPI;

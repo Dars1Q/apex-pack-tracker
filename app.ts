@@ -61,6 +61,7 @@ function writeState(state: StoredState): void {
       updatedAt: Date.now()
     });
   }
+  // НЕ сохраняем в localStorage здесь - это делает real-time listener
 }
 
 // Account management
@@ -331,7 +332,7 @@ function applyState(state: StoredState): void {
 
 function updateUI(): void {
   const state = getState();
-  appState = { ...state };
+  // НЕ обновляем appState здесь - это делает real-time listener
   const remaining = Math.max(500 - state.totalPacks, 0);
   const percent = Math.min(state.totalPacks / 500, 1);
   const percentText = `${Math.round(percent * 100)}%`;
@@ -367,6 +368,64 @@ function updateUI(): void {
 
   // Сохраняем в Firestore
   writeState(state);
+}
+
+/**
+ * Обновление UI из Firestore (вызывается из real-time listener)
+ */
+function updateUIFromFirestore(state: StoredState): void {
+  appState = { ...state };
+  
+  // Обновляем input поле
+  if (totalPacksInput) {
+    totalPacksInput.value = String(state.totalPacks);
+  }
+  
+  // Обновляем toggle Heirloom
+  if (toggleHeirloom) {
+    toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
+    const knob = toggleHeirloom.querySelector("div");
+    if (knob) {
+      knob.classList.toggle("translate-x-6", state.heirloom);
+      knob.classList.toggle("bg-primary", state.heirloom);
+    }
+  }
+  
+  // Обновляем отображение прогресса
+  const remaining = Math.max(500 - state.totalPacks, 0);
+  const percent = Math.min(state.totalPacks / 500, 1);
+  const percentText = `${Math.round(percent * 100)}%`;
+
+  if (ui.welcomeTotal) ui.welcomeTotal.textContent = String(state.totalPacks);
+  if (ui.welcomeProgress) ui.welcomeProgress.style.width = percentText;
+  if (ui.welcomePercent) ui.welcomePercent.textContent = `${percentText} PROGRESS`;
+  if (ui.welcomeRemaining) ui.welcomeRemaining.textContent = `${remaining} REMAINING`;
+
+  // Render completed heirlooms
+  if (completedSection && heirloomListEl) {
+    if (state.completedHeirlooms.length > 0) {
+      completedSection.classList.remove("hidden");
+      if (heirloomListEl) {
+        heirloomListEl.innerHTML = state.completedHeirlooms.map((packs, index) => `
+          <div class="bg-surface-container-high rounded-xl p-4 border border-tertiary/20 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-tertiary text-xl">military_tech</span>
+            </div>
+            <div class="flex-1">
+              <p class="font-headline text-sm font-bold text-tertiary">Heirloom #${index + 1}</p>
+              <p class="text-[10px] text-on-surface-variant">${packs} packs opened</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] font-label text-tertiary/60 uppercase font-bold">COMPLETE</p>
+              <p class="font-headline text-lg font-bold text-tertiary">${packs}/500</p>
+            </div>
+          </div>
+        `).join("");
+      }
+    } else {
+      completedSection.classList.add("hidden");
+    }
+  }
 }
 
 function calculateLevelPacks(totalLevel: number): number {
@@ -423,22 +482,27 @@ function quickAddPacks(count: number): void {
   }
 
   // Добавляем к текущему значению
-  appState.totalPacks += count;
+  const newTotal = appState.totalPacks + count;
   
+  // Обновляем appState
+  appState.totalPacks = newTotal;
+
   // Обновляем input поле
   if (totalPacksInput) {
-    totalPacksInput.value = String(appState.totalPacks);
+    totalPacksInput.value = String(newTotal);
   }
-  
+
+  // Сохраняем в Firestore
   writeState(appState);
-  addToHistory(`Quick Add: +${count} packs`, appState.totalPacks);
+  
+  addToHistory(`Quick Add: +${count} packs`, newTotal);
   updateUI();
   showToast(`Added ${count} packs`, "success");
 }
 
 function markHeirloomObtained(): void {
-  const currentPacks = toNumber(totalPacksInput?.value);
-  
+  const currentPacks = appState.totalPacks;
+
   if (currentPacks <= 0) {
     showToast("No packs to save!", "error");
     return;
@@ -555,12 +619,12 @@ function bindEvents(): void {
   toggleHeirloom?.addEventListener("click", () => {
     const isPressed = toggleHeirloom.getAttribute("aria-pressed") === "true";
     if (!isPressed) {
-      markHeirloomObtained();
-      toggleHeirloom.setAttribute("aria-pressed", "true");
-      const knob = toggleHeirloom.querySelector("div");
-      if (knob) {
-        knob.classList.add("translate-x-6", "bg-primary");
+      // Используем appState.totalPacks вместо значения input
+      if (appState.totalPacks <= 0) {
+        showToast("No packs to save!", "error");
+        return;
       }
+      markHeirloomObtained();
     }
   });
 
@@ -634,7 +698,7 @@ let appState: StoredState = { totalPacks: 0, heirloom: false, completedHeirlooms
 async function initializeApp() {
   // Ждём инициализации Firebase
   await new Promise(resolve => setTimeout(resolve, 500));
-  
+
   // ВСЕГДА загружаем из Firestore если доступен
   if (window.firebaseAuth) {
     const firebaseData = await window.firebaseAuth.loadFromFirestore();
@@ -645,8 +709,14 @@ async function initializeApp() {
         completedHeirlooms: firebaseData.completedHeirlooms || []
       };
     }
+    
+    // Подключаем real-time синхронизацию
+    window.firebaseAuth.subscribeToChanges((data) => {
+      console.log('🔄 Sync from Firestore:', data);
+      updateUIFromFirestore(data);
+    });
   }
-  
+
   bindEvents();
   updateUI();
   setScreen("welcome");

@@ -10,6 +10,8 @@ const firebaseConfig = {
 // Инициализация Firebase
 let app = null;
 let db = null;
+let unsubscribeListener = null;
+let onStateChangeCallback = null;
 // Telegram user ID для идентификации
 let telegramUserId = null;
 /**
@@ -177,6 +179,45 @@ async function deleteAccountFromFirestore(accountId) {
         console.error('Delete account error:', error);
     }
 }
+/**
+ * Подписка на изменения в Firestore (real-time синхронизация)
+ */
+function subscribeToChanges(callback) {
+    if (!db) {
+        console.warn('Firestore not available for real-time sync');
+        return () => { };
+    }
+    try {
+        const userId = getUserId();
+        const userRef = db.collection('users').doc(userId);
+        // Отписываемся от предыдущего слушателя если есть
+        if (unsubscribeListener) {
+            unsubscribeListener();
+        }
+        // Подписываемся на изменения
+        unsubscribeListener = userRef.onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                const state = {
+                    totalPacks: data.totalPacks || 0,
+                    heirloom: data.heirloom || false,
+                    completedHeirlooms: data.completedHeirlooms || [],
+                    updatedAt: data.updatedAt || Date.now()
+                };
+                console.log('🔄 Real-time sync: received update from Firestore', state);
+                callback(state);
+            }
+        }, (error) => {
+            console.error('Real-time sync error:', error);
+        });
+        console.log('✓ Real-time sync enabled for user:', userId);
+        return unsubscribeListener;
+    }
+    catch (error) {
+        console.error('Subscribe to changes error:', error);
+        return () => { };
+    }
+}
 // Экспорт для использования в app.ts
 window.firebaseAuth = {
     initFirebase,
@@ -187,5 +228,6 @@ window.firebaseAuth = {
     loadAccountsFromFirestore,
     deleteAccountFromFirestore,
     isSignedIn: () => !!db,
-    getCurrentUser: () => ({ uid: getUserId() })
+    getCurrentUser: () => ({ uid: getUserId() }),
+    subscribeToChanges
 };
