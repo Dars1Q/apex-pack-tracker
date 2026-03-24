@@ -49,6 +49,7 @@ function toNumber(value: string | null | undefined): number {
 // ============================================
 let appState: StoredState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
 let isInitialized = false;
+let isSwitchingAccount = false;
 
 // Получить текущее состояние из UI (input + toggle)
 function getStateFromUI(): StoredState {
@@ -62,12 +63,12 @@ function getStateFromUI(): StoredState {
 // Применить состояние к UI
 function applyStateToUI(state: StoredState): void {
   appState = { ...state };
-  
+
   // Обновляем input
   if (totalPacksInput) {
     totalPacksInput.value = String(state.totalPacks);
   }
-  
+
   // Обновляем toggle Heirloom
   if (toggleHeirloom) {
     toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
@@ -182,15 +183,16 @@ async function switchAccount(id: string): Promise<boolean> {
   if (currentId) {
     const idx = accounts.findIndex(a => a.id === currentId);
     if (idx >= 0) {
-      accounts[idx].state = { ...appState };
+      // Сначала обновляем appState из UI чтобы сохранить актуальные данные
+      const currentState = getStateFromUI();
+      appState = { ...currentState };
+      accounts[idx].state = { ...currentState };
       await writeAccounts(accounts);
+      saveToFirebase(currentState);
     }
   }
 
-  // Сохраняем в Firebase текущее состояние
-  saveToFirebase(appState);
-
-  // Переключаемся
+  // Переключаемся на новый аккаунт
   setCurrentAccountId(id);
   applyStateToUI(account.state);
   saveToFirebase(account.state);

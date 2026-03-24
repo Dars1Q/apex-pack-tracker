@@ -26,6 +26,7 @@ function toNumber(value) {
 // ============================================
 let appState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
 let isInitialized = false;
+let isSwitchingAccount = false;
 // Получить текущее состояние из UI (input + toggle)
 function getStateFromUI() {
     return {
@@ -150,13 +151,15 @@ async function switchAccount(id) {
     if (currentId) {
         const idx = accounts.findIndex(a => a.id === currentId);
         if (idx >= 0) {
-            accounts[idx].state = Object.assign({}, appState);
+            // Сначала обновляем appState из UI чтобы сохранить актуальные данные
+            const currentState = getStateFromUI();
+            appState = Object.assign({}, currentState);
+            accounts[idx].state = Object.assign({}, currentState);
             await writeAccounts(accounts);
+            saveToFirebase(currentState);
         }
     }
-    // Сохраняем в Firebase текущее состояние
-    saveToFirebase(appState);
-    // Переключаемся
+    // Переключаемся на новый аккаунт
     setCurrentAccountId(id);
     applyStateToUI(account.state);
     saveToFirebase(account.state);
