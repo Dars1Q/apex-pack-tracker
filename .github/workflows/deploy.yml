@@ -37,7 +37,7 @@ jobs:
 
       - name: Build
         run: |
-          npx tsc
+          npx tsc -p tsconfig.json
           npx tsc firebase.ts --outFile firebase.js --target ES2017 --module amd
 
       - name: Setup Pages
