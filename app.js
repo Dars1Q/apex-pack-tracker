@@ -3,9 +3,9 @@ const STORAGE_KEY = "apex-pack-tracker";
 const HISTORY_KEY = "apex-pack-history";
 const ACCOUNTS_KEY = "apex-accounts";
 const CURRENT_ACCOUNT_KEY = "apex-current-account";
+// DOM элементы
 const totalPacksInput = document.getElementById("quick-add-packs");
 const toggleHeirloom = document.getElementById("toggle-heirloom");
-const activeProgressSection = document.getElementById("active-progress-section");
 const completedSection = document.getElementById("completed-section");
 const heirloomListEl = document.getElementById("heirloom-list");
 const ui = {
@@ -16,19 +16,45 @@ const ui = {
 };
 const screens = Array.from(document.querySelectorAll("[data-screen]"));
 const navItems = Array.from(document.querySelectorAll(".nav-item"));
+// Утилита для парсинга чисел
 function toNumber(value) {
     const n = Number.parseInt(value !== null && value !== void 0 ? value : "", 10);
     return Number.isFinite(n) ? n : 0;
 }
-function readState() {
+// ============================================
+// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ============================================
+let appState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
+let isInitialized = false;
+// Получить текущее состояние из UI (input + toggle)
+function getStateFromUI() {
     return {
         totalPacks: toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value),
         heirloom: (toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.getAttribute("aria-pressed")) === "true",
         completedHeirlooms: appState.completedHeirlooms
     };
 }
-function writeState(state) {
-    // Сохраняем в Firestore ВСЕГДА
+// Применить состояние к UI
+function applyStateToUI(state) {
+    appState = Object.assign({}, state);
+    // Обновляем input
+    if (totalPacksInput) {
+        totalPacksInput.value = String(state.totalPacks);
+    }
+    // Обновляем toggle Heirloom
+    if (toggleHeirloom) {
+        toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
+        const knob = toggleHeirloom.querySelector("div");
+        if (knob) {
+            knob.classList.toggle("translate-x-6", state.heirloom);
+            knob.classList.toggle("bg-primary", state.heirloom);
+        }
+    }
+}
+// ============================================
+// FIREBASE
+// ============================================
+function saveToFirebase(state) {
     if (window.firebaseAuth) {
         window.firebaseAuth.saveToFirestore({
             totalPacks: state.totalPacks,
@@ -37,11 +63,11 @@ function writeState(state) {
             updatedAt: Date.now()
         });
     }
-    // НЕ сохраняем в localStorage здесь - это делает real-time listener
 }
-// Account management
+// ============================================
+// АККАУНТЫ
+// ============================================
 async function readAccounts() {
-    // Сначала пробуем загрузить из Firestore
     if (window.firebaseAuth) {
         try {
             const firebaseAccounts = await window.firebaseAuth.loadAccountsFromFirestore();
@@ -62,7 +88,7 @@ async function readAccounts() {
             }
         }
         catch (e) {
-            console.warn('Failed to load accounts from Firestore, using localStorage');
+            console.warn('Failed to load accounts from Firestore');
         }
     }
     // Fallback на localStorage
@@ -77,7 +103,6 @@ async function readAccounts() {
     }
 }
 async function writeAccounts(accounts) {
-    // Сохраняем в Firestore
     if (window.firebaseAuth) {
         try {
             for (const account of accounts) {
@@ -88,7 +113,7 @@ async function writeAccounts(accounts) {
             console.warn('Failed to save accounts to Firestore');
         }
     }
-    // Также сохраняем в localStorage для кэша
+    // Кэш в localStorage
     try {
         localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
     }
@@ -120,24 +145,21 @@ async function switchAccount(id) {
     const account = accounts.find(a => a.id === id);
     if (!account)
         return false;
-    // Сохраняем текущее состояние ТЕКУЩЕГО аккаунта
-    const currentState = getState();
-    // Находим и обновляем текущий аккаунт в списке
+    // Сохраняем состояние текущего аккаунта
     const currentId = getCurrentAccountId();
     if (currentId) {
-        const currentAccountIndex = accounts.findIndex(a => a.id === currentId);
-        if (currentAccountIndex >= 0) {
-            accounts[currentAccountIndex].state = Object.assign({}, currentState);
+        const idx = accounts.findIndex(a => a.id === currentId);
+        if (idx >= 0) {
+            accounts[idx].state = Object.assign({}, appState);
+            await writeAccounts(accounts);
         }
     }
-    writeState(currentState);
-    // Переключаемся на новый аккаунт
+    // Сохраняем в Firebase текущее состояние
+    saveToFirebase(appState);
+    // Переключаемся
     setCurrentAccountId(id);
-    // Применяем состояние нового аккаунта
-    applyState(account.state);
-    writeState(account.state);
-    // Сохраняем обновлённый список аккаунтов
-    await writeAccounts(accounts);
+    applyStateToUI(account.state);
+    saveToFirebase(account.state);
     return true;
 }
 async function deleteAccount(id) {
@@ -147,7 +169,6 @@ async function deleteAccount(id) {
         return false;
     accounts.splice(idx, 1);
     await writeAccounts(accounts);
-    // Удаляем из Firestore
     if (window.firebaseAuth) {
         try {
             await window.firebaseAuth.deleteAccountFromFirestore(id);
@@ -235,7 +256,9 @@ async function renderAccountSwitcher() {
         });
     });
 }
-// History
+// ============================================
+// ИСТОРИЯ
+// ============================================
 function readHistory() {
     try {
         const raw = localStorage.getItem(HISTORY_KEY);
@@ -311,34 +334,19 @@ function showToast(message, type = "info", duration = 3000) {
         setTimeout(() => toast.remove(), 300);
     }, duration);
 }
-function getState() {
-    return {
-        totalPacks: toNumber(totalPacksInput === null || totalPacksInput === void 0 ? void 0 : totalPacksInput.value),
-        heirloom: (toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.getAttribute("aria-pressed")) === "true",
-        completedHeirlooms: appState.completedHeirlooms
-    };
-}
-function applyState(state) {
-    appState = Object.assign({}, state);
-    if (toggleHeirloom) {
-        toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
-        const knob = toggleHeirloom.querySelector("div");
-        if (knob) {
-            knob.classList.toggle("translate-x-6", state.heirloom);
-            knob.classList.toggle("bg-primary", state.heirloom);
-        }
-    }
-}
+// ============================================
+// UI UPDATE
+// ============================================
 function updateUI() {
-    // Используем appState напрямую, а не getState() чтобы не читать из input
     const state = appState;
     const remaining = Math.max(500 - state.totalPacks, 0);
     const percent = Math.min(state.totalPacks / 500, 1);
     const percentText = `${Math.round(percent * 100)}%`;
-    // Обновляем input поле
+    // Обновляем input
     if (totalPacksInput) {
         totalPacksInput.value = String(state.totalPacks);
     }
+    // Обновляем карточки прогресса
     if (ui.welcomeTotal)
         ui.welcomeTotal.textContent = String(state.totalPacks);
     if (ui.welcomeProgress)
@@ -371,83 +379,97 @@ function updateUI() {
             completedSection.classList.add("hidden");
         }
     }
-    // Сохраняем в Firestore
-    writeState(state);
 }
-/**
- * Обновление UI из Firestore (вызывается из real-time listener)
- */
-function updateUIFromFirestore(state) {
-    appState = Object.assign({}, state);
-    // Обновляем toggle Heirloom
+// ============================================
+// ДЕЙСТВИЯ
+// ============================================
+function quickAddPacks(count) {
+    if (count <= 0) {
+        showToast("Enter a positive number", "error");
+        return;
+    }
+    const newTotal = appState.totalPacks + count;
+    appState.totalPacks = newTotal;
+    // Сохраняем в Firebase
+    saveToFirebase(appState);
+    addToHistory(`Quick Add: +${count} packs`, newTotal);
+    // Обновляем UI
+    updateUI();
+    showToast(`Added ${count} packs`, "success");
+}
+function markHeirloomObtained() {
+    const currentPacks = appState.totalPacks;
+    if (currentPacks <= 0) {
+        showToast("No packs to save!", "error");
+        return;
+    }
+    // Сохраняем завершённую реликвию
+    appState.completedHeirlooms.push(currentPacks);
+    appState.totalPacks = 0;
+    appState.heirloom = false;
+    // Обновляем UI переключателя
     if (toggleHeirloom) {
-        toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
+        toggleHeirloom.setAttribute("aria-pressed", "false");
         const knob = toggleHeirloom.querySelector("div");
         if (knob) {
-            knob.classList.toggle("translate-x-6", state.heirloom);
-            knob.classList.toggle("bg-primary", state.heirloom);
+            knob.classList.remove("translate-x-6", "bg-primary");
         }
     }
-    // Обновляем отображение прогресса
-    const remaining = Math.max(500 - state.totalPacks, 0);
-    const percent = Math.min(state.totalPacks / 500, 1);
-    const percentText = `${Math.round(percent * 100)}%`;
-    if (ui.welcomeTotal)
-        ui.welcomeTotal.textContent = String(state.totalPacks);
-    if (ui.welcomeProgress)
-        ui.welcomeProgress.style.width = percentText;
-    if (ui.welcomePercent)
-        ui.welcomePercent.textContent = `${percentText} PROGRESS`;
-    if (ui.welcomeRemaining)
-        ui.welcomeRemaining.textContent = `${remaining} REMAINING`;
-    // Render completed heirlooms
-    if (completedSection && heirloomListEl) {
-        if (state.completedHeirlooms.length > 0) {
-            completedSection.classList.remove("hidden");
-            if (heirloomListEl) {
-                heirloomListEl.innerHTML = state.completedHeirlooms.map((packs, index) => `
-          <div class="bg-surface-container-high rounded-xl p-4 border border-tertiary/20 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center flex-shrink-0">
-              <span class="material-symbols-outlined text-tertiary text-xl">military_tech</span>
-            </div>
-            <div class="flex-1">
-              <p class="font-headline text-sm font-bold text-tertiary">Heirloom #${index + 1}</p>
-              <p class="text-[10px] text-on-surface-variant">${packs} packs opened</p>
-            </div>
-            <div class="text-right">
-              <p class="text-[10px] font-label text-tertiary/60 uppercase font-bold">COMPLETE</p>
-              <p class="font-headline text-lg font-bold text-tertiary">${packs}/500</p>
-            </div>
-          </div>
-        `).join("");
-            }
-        }
-        else {
-            completedSection.classList.add("hidden");
-        }
-    }
+    // Сохраняем в Firebase
+    saveToFirebase(appState);
+    addToHistory(`Heirloom saved! (${appState.completedHeirlooms.length})`, 0);
+    // Обновляем UI
+    updateUI();
+    showToast(`Progress saved! ${currentPacks} packs → Heirloom #${appState.completedHeirlooms.length}`, "success");
 }
+function resetAllData() {
+    appState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
+    if (totalPacksInput)
+        totalPacksInput.value = "";
+    if (toggleHeirloom) {
+        toggleHeirloom.setAttribute("aria-pressed", "false");
+        const knob = toggleHeirloom.querySelector("div");
+        if (knob) {
+            knob.classList.remove("translate-x-6", "bg-primary");
+        }
+    }
+    saveToFirebase(appState);
+    updateUI();
+    showToast("All data reset", "info");
+}
+// ============================================
+// НАВИГАЦИЯ
+// ============================================
+function setScreen(name) {
+    screens.forEach((screen) => {
+        const isActive = screen.getAttribute("data-screen") === name;
+        screen.classList.toggle("hidden", !isActive);
+    });
+    navItems.forEach((item) => {
+        const isActive = item.getAttribute("data-target") === name;
+        item.classList.toggle("text-[#ffb3ad]", isActive);
+        item.classList.toggle("bg-[#2a2a2a]", isActive);
+        item.classList.toggle("text-[#353534]", !isActive);
+    });
+}
+// ============================================
+// КАЛЬКУЛЯТОР УРОВНЕЙ
+// ============================================
 function calculateLevelPacks(totalLevel) {
     let packs = 0;
     // Prestige 1 (1-500): 199 packs total
-    // Levels 2-20: 1 pack per level = 19 packs
     if (totalLevel >= 2) {
         const end = Math.min(totalLevel, 20);
         packs += end - 2 + 1;
     }
-    // Levels 22-300: 1 pack per 2 levels = 140 packs
     if (totalLevel >= 22) {
         const end = Math.min(totalLevel, 300);
         packs += Math.floor((end - 22) / 2) + 1;
     }
-    // Levels 305-500: 1 pack per 5 levels = 40 packs
     if (totalLevel >= 305) {
         const end = Math.min(totalLevel, 500);
         packs += Math.floor((end - 305) / 5) + 1;
     }
-    // Prestige 2 (501-1000): 120 packs (~1 per 4.17 levels)
-    // Prestige 3 (1001-1500): 100 packs (1 per 5 levels)
-    // Prestige 4 (1501-2000): 81 packs (~1 per 6.17 levels)
     if (totalLevel > 500) {
         const p = totalLevel - 500;
         if (p >= 1) {
@@ -465,70 +487,9 @@ function calculateLevelPacks(totalLevel) {
     }
     return packs;
 }
-function quickAddPacks(count) {
-    if (count <= 0) {
-        showToast("Enter a positive number", "error");
-        return;
-    }
-    // Добавляем к текущему значению
-    const newTotal = appState.totalPacks + count;
-    // Обновляем appState
-    appState.totalPacks = newTotal;
-    // Сохраняем в Firestore
-    writeState(appState);
-    addToHistory(`Quick Add: +${count} packs`, newTotal);
-    // Обновляем UI сразу (не ждём real-time listener)
-    updateUI();
-    showToast(`Added ${count} packs`, "success");
-}
-function markHeirloomObtained() {
-    const currentPacks = appState.totalPacks;
-    if (currentPacks <= 0) {
-        showToast("No packs to save!", "error");
-        return;
-    }
-    // Сохраняем текущий прогресс как завершённую реликвию
-    appState.completedHeirlooms.push(currentPacks);
-    // Сбрасываем счётчик на 0
-    appState.totalPacks = 0;
-    // Выключаем Heirloom переключатель (сбрасываем в false)
-    appState.heirloom = false;
-    // Применяем состояние и обновляем UI переключателя
-    applyState(appState);
-    // Сохраняем в Firestore
-    writeState(appState);
-    addToHistory(`Heirloom saved! (${appState.completedHeirlooms.length})`, 0);
-    updateUI();
-    showToast(`Progress saved! ${currentPacks} packs → Heirloom #${appState.completedHeirlooms.length}`, "success");
-}
-function resetAllData() {
-    const emptyState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
-    writeState(emptyState);
-    localStorage.removeItem(STORAGE_KEY + "_completed");
-    if (totalPacksInput)
-        totalPacksInput.value = "";
-    if (toggleHeirloom) {
-        toggleHeirloom.setAttribute("aria-pressed", "false");
-        const knob = toggleHeirloom.querySelector("div");
-        if (knob) {
-            knob.classList.remove("translate-x-6", "bg-primary");
-        }
-    }
-    updateUI();
-    showToast("All data reset", "info");
-}
-function setScreen(name) {
-    screens.forEach((screen) => {
-        const isActive = screen.getAttribute("data-screen") === name;
-        screen.classList.toggle("hidden", !isActive);
-    });
-    navItems.forEach((item) => {
-        const isActive = item.getAttribute("data-target") === name;
-        item.classList.toggle("text-[#ffb3ad]", isActive);
-        item.classList.toggle("bg-[#2a2a2a]", isActive);
-        item.classList.toggle("text-[#353534]", !isActive);
-    });
-}
+// ============================================
+// СОБЫТИЯ
+// ============================================
 function bindEvents() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     // Navigation
@@ -584,7 +545,6 @@ function bindEvents() {
     toggleHeirloom === null || toggleHeirloom === void 0 ? void 0 : toggleHeirloom.addEventListener("click", () => {
         const isPressed = toggleHeirloom.getAttribute("aria-pressed") === "true";
         if (!isPressed) {
-            // Используем appState.totalPacks вместо значения input
             if (appState.totalPacks <= 0) {
                 showToast("No packs to save!", "error");
                 return;
@@ -651,15 +611,16 @@ function bindEvents() {
         }
     });
 }
-// Initialize
-let appState = { totalPacks: 0, heirloom: false, completedHeirlooms: [] };
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================
 async function initializeApp() {
     // Ждём инициализации Firebase
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // ВСЕГДА загружаем из Firestore если доступен
+    await new Promise(resolve => setTimeout(resolve, 300));
     if (window.firebaseAuth) {
+        // Загружаем данные из Firestore
         const firebaseData = await window.firebaseAuth.loadFromFirestore();
-        if (firebaseData && firebaseData.totalPacks > 0) {
+        if (firebaseData) {
             appState = {
                 totalPacks: firebaseData.totalPacks || 0,
                 heirloom: firebaseData.heirloom || false,
@@ -669,9 +630,16 @@ async function initializeApp() {
         // Подключаем real-time синхронизацию
         window.firebaseAuth.subscribeToChanges((data) => {
             console.log('🔄 Sync from Firestore:', data);
-            updateUIFromFirestore(data);
+            // Обновляем состояние только если данные отличаются
+            if (data.totalPacks !== appState.totalPacks ||
+                data.heirloom !== appState.heirloom ||
+                JSON.stringify(data.completedHeirlooms) !== JSON.stringify(appState.completedHeirlooms)) {
+                appState = Object.assign({}, data);
+                updateUI();
+            }
         });
     }
+    isInitialized = true;
     bindEvents();
     updateUI();
     setScreen("welcome");
