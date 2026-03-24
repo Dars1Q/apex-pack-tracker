@@ -514,10 +514,10 @@ function markHeirloomObtained(): void {
   // Сбрасываем счётчик на 0
   appState.totalPacks = 0;
 
-  // Включаем Heirloom
-  appState.heirloom = true;
+  // Выключаем Heirloom переключатель (сбрасываем в false)
+  appState.heirloom = false;
 
-  // Применяем состояние
+  // Применяем состояние и обновляем UI переключателя
   applyState(appState);
 
   // Сохраняем в Firestore
