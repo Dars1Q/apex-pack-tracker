@@ -335,6 +335,10 @@ function updateUI() {
     const remaining = Math.max(500 - state.totalPacks, 0);
     const percent = Math.min(state.totalPacks / 500, 1);
     const percentText = `${Math.round(percent * 100)}%`;
+    // Обновляем input поле
+    if (totalPacksInput) {
+        totalPacksInput.value = String(state.totalPacks);
+    }
     if (ui.welcomeTotal)
         ui.welcomeTotal.textContent = String(state.totalPacks);
     if (ui.welcomeProgress)
@@ -375,10 +379,6 @@ function updateUI() {
  */
 function updateUIFromFirestore(state) {
     appState = Object.assign({}, state);
-    // Обновляем input поле
-    if (totalPacksInput) {
-        totalPacksInput.value = String(state.totalPacks);
-    }
     // Обновляем toggle Heirloom
     if (toggleHeirloom) {
         toggleHeirloom.setAttribute("aria-pressed", String(state.heirloom));
@@ -474,13 +474,10 @@ function quickAddPacks(count) {
     const newTotal = appState.totalPacks + count;
     // Обновляем appState
     appState.totalPacks = newTotal;
-    // Обновляем input поле
-    if (totalPacksInput) {
-        totalPacksInput.value = String(newTotal);
-    }
     // Сохраняем в Firestore
     writeState(appState);
     addToHistory(`Quick Add: +${count} packs`, newTotal);
+    // Обновляем UI сразу (не ждём real-time listener)
     updateUI();
     showToast(`Added ${count} packs`, "success");
 }

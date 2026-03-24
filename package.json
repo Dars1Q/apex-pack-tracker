@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Apex Legends Heirloom Pack Tracker with Telegram WebApp and Firebase support",
   "scripts": {
-    "build": "tsc && tsc firebase.ts --outFile firebase.js --target ES2017",
+    "build": "tsc && tsc firebase.ts --outFile firebase.js --target ES2017 --module amd",
     "watch": "tsc --watch",
     "serve": "npx serve .",
     "dev": "concurrently \"npm run watch\" \"npm run serve\"",
