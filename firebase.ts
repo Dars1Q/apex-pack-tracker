@@ -14,7 +14,7 @@ declare const firebase: any;
 // Инициализация Firebase
 let app: any = null;
 let db: any = null;
-let unsubscribeListener: (() => void) | null = null;
+let unsubscribeListener: () => void = () => {};
 let onStateChangeCallback: ((data: FirebaseState) => void) | null = null;
 
 // Telegram user ID для идентификации
@@ -240,10 +240,8 @@ function subscribeToChanges(callback: (data: FirebaseState) => void): () => void
     const userId = getUserId();
     const userRef = db.collection('users').doc(userId);
 
-    // Отписываемся от предыдущего слушателя если есть
-    if (unsubscribeListener) {
-      unsubscribeListener();
-    }
+    // Отписываемся от предыдущего слушателя
+    unsubscribeListener();
 
     // Подписываемся на изменения
     unsubscribeListener = userRef.onSnapshot(
